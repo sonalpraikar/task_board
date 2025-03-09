@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Board</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background: url('https://source.unsplash.com/1600x900/?nature,abstract') no-repeat center center/cover;
+            color: #fff;
+        }
+        .board {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 90%;
+            max-width: 1200px;
+            margin-top: 20px;
+        }
+        .column {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            width: 300px;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .col-title {
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            border: none;
+            background: none;
+            outline: none;
+            margin-bottom: 10px;
+            color: #d63384;
+        }
+        .task-input {
+            width: 80%;
+            padding: 10px;
+            border: 2px solid #d63384;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #ff69b4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.3s;
+            font-weight: bold;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #d63384;
+        }
+        .tasks, .completed {
+            width: 100%;
+            min-height: 50px;
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 10px;
+            background: #ffe4e1;
+        }
+        .task {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #ffe4e1;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 10px;
+            border-left: 5px solid #ff69b4;
+            color: black;
+        }
+        .remove-btn {
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        h4 {
+            margin-top: 15px;
+            font-size: 16px;
+            color: #d63384;
+        }
+    </style>
+</head>
+<body>
+    <button onclick="addNewColumn()">New Column</button>
+    <div class="board" id="taskBoard"></div>
+    <script>
+        document.addEventListener("DOMContentLoaded", loadBoard);
+
+        function createColumn(title, id, tasks = [], completed = []) {
+            let taskHTML = tasks.map(task => `<div class='task'><span>${task}</span> <input type='checkbox' onchange='completeTask(this, ${id})'></div>`).join('');
+            let completedHTML = completed.map(task => `<div class='task'><span>${task}</span> <button class='remove-btn' onclick='removeTask(this)'>Remove</button></div>`).join('');
+            return `
+                <div class="column" id="col${id}">
+                    <input type="text" value="${title}" class="col-title" oninput="updateTitle(this, ${id})">
+                    <input type="text" placeholder="New Task" class="task-input">
+                    <button onclick="addTask(this, ${id})">Add Task</button>
+                    <button onclick="removeColumn(${id})">Remove Column</button>
+                    <div class="tasks">${taskHTML}</div>
+                    <h4>Completed Tasks</h4>
+                    <div class="completed">${completedHTML}</div>
+                </div>
+            `;
+        }
+
+        function loadBoard() {
+            let board = document.getElementById("taskBoard");
+            let savedData = JSON.parse(localStorage.getItem("taskData")) || [];
+            board.innerHTML = "";
+            savedData.forEach((data, index) => {
+                board.innerHTML += createColumn(data.title, index + 1, data.tasks, data.completed);
+            });
+        }
+
+        function updateTitle(input, id) {
+            let savedData = JSON.parse(localStorage.getItem("taskData")) || [];
+            savedData[id - 1].title = input.value;
+            localStorage.setItem("taskData", JSON.stringify(savedData));
+        }
+
+        function addTask(button, id) {
+            let column = button.parentElement;
+            let taskInput = column.querySelector('.task-input');
+            let taskText = taskInput.value.trim();
+            if (taskText === '') return;
+            
+            let task = document.createElement('div');
+            task.classList.add('task');
+            task.innerHTML = `<span>${taskText}</span> <input type='checkbox' onchange='completeTask(this, ${id})'>`;
+            column.querySelector('.tasks').appendChild(task);
+            taskInput.value = '';
+            saveTasks();
+        }
+
+        function completeTask(checkbox, id) {
+            let task = checkbox.parentElement;
+            let column = task.parentElement.parentElement;
+            checkbox.remove();
+            task.innerHTML += " <button class='remove-btn' onclick='removeTask(this)'>Remove</button>";
+            column.querySelector('.completed').appendChild(task);
+            saveTasks();
+        }
+
+        function removeTask(button) {
+            button.parentElement.remove();
+            saveTasks();
+        }
+
+        function addNewColumn() {
+            let board = document.getElementById("taskBoard");
+            let savedData = JSON.parse(localStorage.getItem("taskData")) || [];
+            let newColumn = { title: `Column ${savedData.length + 1}`, tasks: [], completed: [] };
+            savedData.push(newColumn);
+            localStorage.setItem("taskData", JSON.stringify(savedData));
+            board.innerHTML += createColumn(newColumn.title, savedData.length, [], []);
+        }
+
+        function removeColumn(id) {
+            let savedData = JSON.parse(localStorage.getItem("taskData")) || [];
+            savedData.splice(id - 1, 1);
+            localStorage.setItem("taskData", JSON.stringify(savedData));
+            loadBoard();
+        }
+
+        function saveTasks() {
+            let boardData = Array.from(document.querySelectorAll(".column")).map(column => {
+                return {
+                    title: column.querySelector(".col-title").value,
+                    tasks: Array.from(column.querySelectorAll(".tasks .task span")).map(t => t.innerText),
+                    completed: Array.from(column.querySelectorAll(".completed .task span")).map(t => t.innerText)
+                };
+            });
+            localStorage.setItem("taskData", JSON.stringify(boardData));
+        }
+    </script>
+</body>
+</html>
